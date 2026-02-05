@@ -25,31 +25,55 @@ LAYOUT_BASE = dict(
 # N1 — JAUGE SCORE DE CHARGE
 # ══════════════════════════════════════════════════════════════════
 def gauge_charge(score, delta=None, title="Score de Charge"):
+    """Jauge semi-circulaire avec le nombre SOUS l'arc pour meilleure lisibilite."""
     level = get_charge_level(score)
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=score,
-        title={'text': title, 'font': {'size': 16, 'color': BLEU_FONCE}},
-        number={'font': {'size': 52, 'color': BLEU_FONCE}, 'suffix': '/100'},
+        number={
+            'font': {'size': 56, 'color': level['color'], 'family': 'Arial Black'},
+            'suffix': '',
+            'valueformat': '.0f'
+        },
         gauge={
-            'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': GRIS_TEXTE,
-                     'dtick': 25},
-            'bar': {'color': level['color'], 'thickness': 0.3},
-            'bgcolor': BLANC,
+            'axis': {
+                'range': [0, 100],
+                'tickwidth': 2,
+                'tickcolor': GRIS_TEXTE,
+                'dtick': 25,
+                'tickfont': {'size': 12, 'color': GRIS_TEXTE}
+            },
+            'bar': {'color': level['color'], 'thickness': 0.6},
+            'bgcolor': '#E8ECF0',
+            'borderwidth': 0,
             'steps': [
-                {'range': [0, 50],   'color': '#E8F5E9'},
-                {'range': [50, 70],  'color': '#FFF8E1'},
-                {'range': [70, 85],  'color': '#FFF3E0'},
-                {'range': [85, 100], 'color': '#FFEBEE'},
+                {'range': [0, 50],   'color': '#D1FAE5'},
+                {'range': [50, 70],  'color': '#FEF3C7'},
+                {'range': [70, 85],  'color': '#FFEDD5'},
+                {'range': [85, 100], 'color': '#FEE2E2'},
             ],
             'threshold': {
-                'line': {'color': ROUGE_CRIT, 'width': 3},
-                'thickness': 0.8, 'value': 85,
+                'line': {'color': ROUGE_CRIT, 'width': 4},
+                'thickness': 0.85,
+                'value': 85,
             },
         },
+        domain={'x': [0.1, 0.9], 'y': [0.25, 1]},
     ))
-    fig.update_layout(height=220, margin=dict(t=50, b=10, l=30, r=30),
-                      paper_bgcolor='rgba(0,0,0,0)')
+    fig.update_layout(
+        height=280,
+        margin=dict(t=20, b=60, l=20, r=20),
+        paper_bgcolor='rgba(0,0,0,0)',
+        annotations=[
+            dict(
+                text=f"<b>/100</b>",
+                x=0.5, y=0.15,
+                font=dict(size=18, color=GRIS_TEXTE),
+                showarrow=False,
+                xanchor='center'
+            )
+        ]
+    )
     return fig
 
 
@@ -123,9 +147,9 @@ def creneaux_critiques(hours, scores):
     fig.add_hline(y=70, line_dash="dot", line_color=JAUNE_VIGIL, line_width=1)
     fig.add_hline(y=85, line_dash="dot", line_color=ROUGE_CRIT, line_width=1)
     fig.update_layout(
-        **LAYOUT_BASE, height=280,
+        **LAYOUT_BASE, height=380,
         yaxis=dict(range=[0, 105], title="Score prevu"),
-        xaxis=dict(title="Heure", dtick=1),
+        xaxis=dict(title="Heure", dtick=2),
         showlegend=False,
     )
     return fig
@@ -232,8 +256,8 @@ def heatmap_jour_heure(df_hourly, current_hour=None, current_day=None):
         )
 
     fig.update_layout(
-        **LAYOUT_BASE, height=300,
-        xaxis=dict(title="Heure", dtick=1, side='bottom'),
+        **LAYOUT_BASE, height=380,
+        xaxis=dict(title="Heure", dtick=2, side='bottom'),
         yaxis=dict(title="", autorange='reversed'),
         title=dict(text="Flux moyen par creneau", font=dict(size=14, color=BLEU_FONCE)),
     )

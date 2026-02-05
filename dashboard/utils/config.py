@@ -13,20 +13,23 @@ GRIS_MEDICAL    = '#E8ECF0'
 GRIS_TEXTE      = '#4A5568'
 BLANC           = '#FFFFFF'
 
-# Indicateurs de severite
-VERT_OK      = '#28A745'
-JAUNE_VIGIL  = '#FFC107'
-ORANGE_ALERT = '#FF8C42'
-ROUGE_CRIT   = '#DC3545'
+# Indicateurs de severite (4 niveaux)
+VERT_OK      = '#10B981'   # < 50 : Normal
+JAUNE_VIGIL  = '#F59E0B'   # 50-70 : Vigilance
+ORANGE_ALERT = '#F97316'   # 70-85 : Attention
+ROUGE_CRIT   = '#EF4444'   # >= 85 : Critique
+
+# Alias pour compatibilite
+JAUNE_VIGILANCE = JAUNE_VIGIL
 
 # ══════════════════════════════════════════════════════════════════
 # SEUILS
 # ══════════════════════════════════════════════════════════════════
 SEUILS_CHARGE = [
-    {'label': 'Normal',     'min': 0,  'max': 50, 'color': VERT_OK,     'icon': '🟢', 'bg': '#E8F5E9'},
-    {'label': 'Vigilance',  'min': 50, 'max': 70, 'color': JAUNE_VIGIL, 'icon': '🟡', 'bg': '#FFF8E1'},
-    {'label': 'Alerte',     'min': 70, 'max': 85, 'color': ORANGE_ALERT,'icon': '🟠', 'bg': '#FFF3E0'},
-    {'label': 'Saturation', 'min': 85, 'max': 100,'color': ROUGE_CRIT,  'icon': '🔴', 'bg': '#FFEBEE'},
+    {'label': 'Normal',     'min': 0,  'max': 50, 'color': VERT_OK,     'icon': '✓', 'bg': '#ECFDF5'},
+    {'label': 'Vigilance',  'min': 50, 'max': 70, 'color': JAUNE_VIGIL, 'icon': '⚠', 'bg': '#FEF3C7'},
+    {'label': 'Attention',  'min': 70, 'max': 85, 'color': ORANGE_ALERT,'icon': '⚠⚠', 'bg': '#FFEDD5'},
+    {'label': 'Critique',   'min': 85, 'max': 100,'color': ROUGE_CRIT,  'icon': '🚨', 'bg': '#FEE2E2'},
 ]
 
 SEUILS_KPI = {
@@ -60,26 +63,34 @@ FEATURE_COLS = [
 # SCENARIOS PREDEFINIS
 # ══════════════════════════════════════════════════════════════════
 SCENARIOS = {
-    '🟢 Normal': {},
-    '🦠 Epidemie': {
+    'Normal': {},
+    'Epidemie': {
         'alerte_epidemique_encoded': 1,
         'patient_count_mult': 1.30,
         'nb_patients_en_cours_mult': 1.25,
     },
-    '✊ Greve': {
+    'Greve': {
         'indicateur_greve': 1,
         'effectif_soignant_present_mult': 0.87,
     },
-    '🌡️ Canicule': {
+    'Canicule': {
         'temperature_max': 38,
         'patient_count_mult': 1.15,
         'nb_patients_en_cours_mult': 1.10,
     },
-    '💥 Afflux massif': {
+    'Afflux massif': {
         'patient_count_mult': 1.50,
         'nb_patients_en_cours_mult': 1.40,
         'evenement_externe': 1,
     },
+}
+
+# Scenarios d'affluence (remplace le multiplicateur obscur)
+SCENARIOS_AFFLUENCE = {
+    'Normal': 1.0,
+    'Affluence moderee (+20%)': 1.2,
+    'Forte affluence (+50%)': 1.5,
+    'Crise majeure (+100%)': 2.0,
 }
 
 # Coefficients pathologie (du notebook — 7 entrees intentionnelles)

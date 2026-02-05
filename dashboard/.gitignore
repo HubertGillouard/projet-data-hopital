@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.env
+.venv
+venv/
+ENV/
+
+# Modeles trop lourds pour GitHub (>100MB)
+models/modele_random_forest.pkl
+models/model_sarimax.pkl
+
+# Donnees (trop lourd)
+data/*.csv
+*.csv
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Streamlit
+.streamlit/secrets.toml
