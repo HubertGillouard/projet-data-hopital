@@ -44,8 +44,11 @@ def load_data():
             environnementaux et de ressources.
     """
 
+    # Définissez uniquement les colonnes dont vous avez besoin pour le dashboard
+    keep_cols = ['date_heure_arrivee', 'heure', 'id_passage', 'temps_passage_total', 'jour_semaine', 'effectif_soignant_present', 'dispo_lits_aval']
+
     # Charger le dataset
-    df = pd.read_csv('urgences_data.csv', encoding='latin1')
+    df = pd.read_csv('urgences_data.csv', encoding='latin1', usecols=keep_cols)
 
     # Conversion de la colonne en format datetime
     df['date_heure_arrivee'] = pd.to_datetime(df['date_heure_arrivee'], format='%d/%m/%Y %H:%M')
@@ -91,27 +94,27 @@ def load_data():
     df_hourly = df.resample('h').agg({
         'id_passage': 'count',          # Nombre de patients pour cette heure
         'temps_passage_total': 'mean',  # Temps passé moyen pour cette heure
-        'mois': 'mean',
-        'heure': 'mean',
+        # 'mois': 'mean',
+        # 'heure': 'mean',
         'jour_semaine': 'mean',
-        'annee': 'mean',
-        'temperature_max': 'max',
-        'indicateur_greve': 'max',
-        'evenement_externe': 'max',
-        'niveau_pollution': 'max',
-        'age_patient': 'mean',
-        'score_IAO': 'max',
+        # 'annee': 'mean',
+        # 'temperature_max': 'max',
+        # 'indicateur_greve': 'max',
+        # 'evenement_externe': 'max',
+        # 'niveau_pollution': 'max',
+        # 'age_patient': 'mean',
+        # 'score_IAO': 'max',
         'effectif_soignant_present': 'mean',
         'dispo_lits_aval': 'min',
-        'consommation_O2': 'min',
-        'kit_traumatologie': 'min',
-        'solutes_hydratation': 'min',
-        'alerte_epidemique_encoded': 'mean',
-        'batiment_accueil_encoded': 'mean',
-        'filiere_pathologie_encoded': 'mean',
-        'mode_transport_encoded': 'mean',
-        'besoin_imagerie_encoded': 'mean',
-        'devenir_patient_encoded': 'mean',
+        # 'consommation_O2': 'min',
+        # 'kit_traumatologie': 'min',
+        # 'solutes_hydratation': 'min',
+        # 'alerte_epidemique_encoded': 'mean',
+        # 'batiment_accueil_encoded': 'mean',
+        # 'filiere_pathologie_encoded': 'mean',
+        # 'mode_transport_encoded': 'mean',
+        # 'besoin_imagerie_encoded': 'mean',
+        # 'devenir_patient_encoded': 'mean',
         'nb_patients_en_cours': 'max',
         'occup_lits_estimee': 'max'
     }).rename(columns={
@@ -167,7 +170,7 @@ with st.container(border=True):
         lits = st.number_input("Disponibilité lits aval", min_value=0, max_value=100)
         
         # patient_count
-        current_patients = st.number_input("Nombre de patients déjà en attente", min_value=0)
+        current_patients = st.number_input("Nombre de patients déjà en attente ou en cours de prise en charge", min_value=0)
 
     # Bouton de lancement
     btn_predict = st.button("🚀 CALCULER L'IMPACT", width="stretch", type="primary")
@@ -177,29 +180,78 @@ with st.container(border=True):
 
 if btn_predict:
     # Encodage des variables textuelles comme dans notre notebook
-    mapping_epi = {"Aucune": 0, "COVID": 2, "Grippe": 4, "Bronchiolite": 1, "Gastro": 3}
-    
-    # Création du DataFrame exogène pour la prédiction
-    exog_simu = pd.DataFrame({
-        'patient_count': [current_patients],
-        'jour_semaine': [jour_semaine],
-        'effectif_soignant_present': [staff],
-        'dispo_lits_aval': [lits],
-        # 'alerte_epidemique_encoded': [mapping_epi[epidemie]],
-        # 'temperature_max': [temp],
-        # 'indicateur_greve': [1 if greve else 0],
-    })
+    # mapping_epi = {"Aucune": 0, "COVID": 2, "Grippe": 4, "Bronchiolite": 1, "Gastro": 3}
 
-    # Appel du modèle
+    # Création de la séquence de dates au format datetime64 de Pandas
+    base_time = pd.Timestamp(target_date).normalize()
+
+    # Génération des 24 heures suivantes directement
+    future_dates = pd.date_range(start=base_time, periods=24, freq='h')
+
+    # Préparation des données numériques
+    future_exog_data = []
+    for current_dt in future_dates:
+        future_exog_data.append({
+            'patient_count': current_patients,
+            'jour_semaine': current_dt.weekday(),
+            'effectif_soignant_present': staff,
+            'dispo_lits_aval': lits
+            # 'alerte_epidemique_encoded': mapping_epi[epidemie],
+            # 'temperature_max': temp,
+            # 'indicateur_greve': 1 if greve else 0
+        })
+
+    # Création du DataFrame avec l'index temporel
+    exog_24h = pd.DataFrame(future_exog_data, index=future_dates)
+
+    # Nommage de l'index comme dans le notebook
+    exog_24h.index.name = 'date_hourly'
+
+    # Appel du modèle pour 24 pas de temps (H+24)
     try:
-        # On prédit par exemple les 24 prochaines heures
-        # Note : Pour SARIMAX, si nous avons plusieurs steps, il faut répéter les exog
-        prediction = model.forecast(steps=1, exog=exog_simu)
-        valeur_predite = int(prediction.iloc[0])
-        
-        # Affichage
+        with st.spinner("Calcul des prévisions des Length Of Stay sur 24h..."):
+            # Prédiction des 24 prochaines heures avec les exogènes préparées
+            # prediction_24h = model.forecast(steps=24, exog=exog_24h)
+
+            prediction_24h = model.predict(start=len(model.fittedvalues), end=len(model.fittedvalues) + 23, exog=exog_24h)
+            
+            # Nettoyage des valeurs (pas de temps négatif)
+            prediction_24h = [max(0, val) for val in prediction_24h]
+            
+            avg_los_24h = np.mean(prediction_24h)
+            peak_los = np.max(prediction_24h)
+
+        # Affichage des Indicateurs de Charge
         st.divider()
-        st.metric("Nombre d'entrées prévues", f"{valeur_predite} patients")
+        st.subheader("📊 Analyse du Temps de Passage Total (LOS)")
         
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Moyenne sur 24h", f"{int(avg_los_24h)} min")
+        m2.metric("Pic de prise en charge", f"{int(peak_los)} min")
+        m3.metric("Tension de service", "Critique" if peak_los > 240 else "Fluide")
+
+        # Graphique temporel
+        st.write("**Évolution du temps de prise en charge moyen par heure**")
+        chart_df = pd.DataFrame({
+            'Heure': [f"H+{i}" for i in range(1, 25)],
+            'Temps de passage (min)': forecast_los
+        }).set_index('Heure')
+        
+        st.line_chart(chart_df)
+
+        # Recommandations stratégiques
+        st.subheader("💡 Étude d'impact et recommandations")
+        
+        if peak_los > 300: # Seuil de 5h de passage moyen
+            st.error("🚨 **ALERTE ENCOMBREMENT**")
+            st.markdown(f"""
+            - **Constat :** Le temps de passage total atteint un pic de **{int(peak_los)} min**. Le service est en risque de saturation.
+            - **Action :** Prioriser les dossiers en attente de résultats d'imagerie pour libérer les box.
+            - **Stratégie :** Augmenter le ratio soignants/patients (actuellement basé sur {staff} soignants).
+            """)
+        else:
+            st.success("✅ **FLUX OPTIMAL**")
+            st.write("Le temps de passage moyen est maîtrisé. Les ressources actuelles permettent une prise en charge fluide.")
+
     except Exception as e:
-        st.error(f"Erreur lors de la prédiction : {e}")
+        st.error(f"Erreur modèle : {e}")
