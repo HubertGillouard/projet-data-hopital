@@ -219,7 +219,7 @@ if btn_predict:
         st.write("**Évolution du temps de prise en charge moyen par heure**")
         chart_df = pd.DataFrame({
             'Heure': [f"H+{i}" for i in range(1, 25)],
-            'Temps de passage (min)': forecast_los
+            'Temps de passage (min)': prediction_24h
         }).set_index('Heure')
         
         st.line_chart(chart_df)
