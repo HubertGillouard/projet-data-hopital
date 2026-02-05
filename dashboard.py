@@ -15,11 +15,23 @@ st.set_page_config(
 
 @st.cache_resource
 def load_model():
-    return joblib.load('model_sarimax.pkl')
+    # Charger le modèle "léger"
+    model_hollow = joblib.load('model_sarimax.pkl')
+    
+    # Charger les données de contexte
+    last_y = pd.read_csv('last_y.csv', index_col=0, parse_dates=True)
+    last_exog = pd.read_csv('last_exog.csv', index_col=0, parse_dates=True)
+    
+    # "Injecter" la mémoire dans le modèle vide via .apply()
+    # Cela permet de faire des prédictions à partir de la fin de last_y
+    model_ready = model_hollow.apply(endog=last_y, exog=last_exog)
+    
+    return model_ready
 
 model_load_state = st.text('Loading model...')
 model = load_model()
 model_load_state.text("Done! (using st.cache_resource)")
+
 
 # CHARGEMENT DES DONNEES
 
@@ -94,27 +106,9 @@ def load_data():
     df_hourly = df.resample('h').agg({
         'id_passage': 'count',          # Nombre de patients pour cette heure
         'temps_passage_total': 'mean',  # Temps passé moyen pour cette heure
-        # 'mois': 'mean',
-        # 'heure': 'mean',
         'jour_semaine': 'mean',
-        # 'annee': 'mean',
-        # 'temperature_max': 'max',
-        # 'indicateur_greve': 'max',
-        # 'evenement_externe': 'max',
-        # 'niveau_pollution': 'max',
-        # 'age_patient': 'mean',
-        # 'score_IAO': 'max',
         'effectif_soignant_present': 'mean',
         'dispo_lits_aval': 'min',
-        # 'consommation_O2': 'min',
-        # 'kit_traumatologie': 'min',
-        # 'solutes_hydratation': 'min',
-        # 'alerte_epidemique_encoded': 'mean',
-        # 'batiment_accueil_encoded': 'mean',
-        # 'filiere_pathologie_encoded': 'mean',
-        # 'mode_transport_encoded': 'mean',
-        # 'besoin_imagerie_encoded': 'mean',
-        # 'devenir_patient_encoded': 'mean',
         'nb_patients_en_cours': 'max',
         'occup_lits_estimee': 'max'
     }).rename(columns={
@@ -175,13 +169,9 @@ with st.container(border=True):
     # Bouton de lancement
     btn_predict = st.button("🚀 CALCULER L'IMPACT", width="stretch", type="primary")
 
-
 # PREPARATION DU VECTEUR EXOGENE POUR LE MODELE (BACK-END)
 
 if btn_predict:
-    # Encodage des variables textuelles comme dans notre notebook
-    # mapping_epi = {"Aucune": 0, "COVID": 2, "Grippe": 4, "Bronchiolite": 1, "Gastro": 3}
-
     # Création de la séquence de dates au format datetime64 de Pandas
     base_time = pd.Timestamp(target_date).normalize()
 
@@ -196,9 +186,6 @@ if btn_predict:
             'jour_semaine': current_dt.weekday(),
             'effectif_soignant_present': staff,
             'dispo_lits_aval': lits
-            # 'alerte_epidemique_encoded': mapping_epi[epidemie],
-            # 'temperature_max': temp,
-            # 'indicateur_greve': 1 if greve else 0
         })
 
     # Création du DataFrame avec l'index temporel
@@ -211,9 +198,7 @@ if btn_predict:
     try:
         with st.spinner("Calcul des prévisions des Length Of Stay sur 24h..."):
             # Prédiction des 24 prochaines heures avec les exogènes préparées
-            # prediction_24h = model.forecast(steps=24, exog=exog_24h)
-
-            prediction_24h = model.predict(start=len(model.fittedvalues), end=len(model.fittedvalues) + 23, exog=exog_24h)
+            prediction_24h = model.forecast(steps=24, exog=exog_24h)
             
             # Nettoyage des valeurs (pas de temps négatif)
             prediction_24h = [max(0, val) for val in prediction_24h]
